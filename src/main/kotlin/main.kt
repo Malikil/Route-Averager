@@ -7,12 +7,20 @@ fun main() {
     val track2 = GpxHandler("tracks/Hollyburn TCT/Track_Hollyburn  143605.gpx").readGpx()
     println(track2.name)
 
-    val result =
-        if (track1.getPointCount() < track2.getPointCount())
-            averageWith(track1.getTrack(), track2.getTrack())
-        else
-            averageWith(track2.getTrack(), track1.getTrack())
-    GpxHandler("tracks/result.gpx").writeGpx("Averaged Track", result)
+    val simplified = arrayOf(
+        track1.simplifyTrack(COMBINATION_THRESHOLD),
+        track2.simplifyTrack(COMBINATION_THRESHOLD)
+    )
+    val result = GpxTrack("Averaged Track", average(
+        averageWith(simplified[0].getTrack(), simplified[1].getTrack()),
+        averageWith(simplified[1].getTrack(), simplified[0].getTrack())
+    )).smoothTrack()
+    GpxHandler("tracks/result.gpx").writeGpx(result)
+
+    var superSmooth = result.smoothTrack()
+    for (i in 0..50)
+        superSmooth = superSmooth.smoothTrack()
+    GpxHandler("tracks/result-smooth.gpx").writeGpx(superSmooth)
 }
 
 /**
@@ -116,14 +124,14 @@ fun average(list1: List<Point2D>, weight1: Int, list2: List<Point2D>, weight2: I
             // There are now no more points on the second list, and the only
             // remaining points on the first are farther than the list2 point.
             // Add the average of the next two points
-            updated += Point2D.Double((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
+            /*updated += Point2D.Double((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
             // Every remaining point should be averaged with the endpoint of list2
             iter1.forEachRemaining { point ->
                 updated += Point2D.Double(
                     (point.x * weight1 + list2.last().x * weight2) / (weight1 + weight2),
                     (point.y * weight1 + list2.last().y * weight2) / (weight1 + weight2)
                 )
-            }
+            } // Not gonna add leftover points, see how it looks */
         }
         iter2.hasNext() -> {
             while (iter2.hasNext() &&
@@ -131,13 +139,13 @@ fun average(list1: List<Point2D>, weight1: Int, list2: List<Point2D>, weight2: I
                 updated += p2
                 p2 = averageNearestPoint(iter2.next(), list1, weight2, weight1)
             }
-            updated += Point2D.Double((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
+            /*updated += Point2D.Double((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
             iter2.forEachRemaining { point ->
                 updated += Point2D.Double(
                     (point.x * weight2 + list1.last().x * weight1) / (weight1 + weight2),
                     (point.y * weight2 + list1.last().y * weight1) / (weight1 + weight2)
                 )
-            }
+            } // */
         }
         else -> {
             // I'm not sure if this is guaranteed for every case yet, but in the

@@ -15,8 +15,8 @@ class GpxTrack(val name: String, track: List<Point2D>) {
      * @param threshold How close together should two points be for them to be combined.
      * The default value is equivalent to about 3 meters using lat/lon coordinates
      */
-    fun getSimplifiedTrack(threshold: Double = 0.00003)
-            : List<Point2D> {
+    fun simplifyTrack(threshold: Double = 0.00003)
+            : GpxTrack {
         val simplified = ArrayList<Point2D>()
 
         // Figure out the point to add
@@ -35,7 +35,22 @@ class GpxTrack(val name: String, track: List<Point2D>) {
             simplified.add(add)
         }
 
-        return simplified
+        return GpxTrack(name, simplified)
+    }
+
+    /**
+     * Smooths a track's points out to make a track less jagged
+     */
+    fun smoothTrack()
+            : GpxTrack {
+        // Each point should be averaged with the one before and after it
+        val list = track.mapIndexed { i, point ->
+            // Leave first and last point untouched
+            if (i == 0 || i == track.lastIndex) point
+            // Average with the midpoint of the bounding points
+            else pointAverage(point, pointAverage(track[i - 1], track[i + 1]))
+        }
+        return GpxTrack(name, list)
     }
 
     /**
