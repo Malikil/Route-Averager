@@ -1,15 +1,55 @@
 import java.awt.geom.Point2D
-import java.io.File
 import kotlin.math.abs
 
 fun main() {
-    val track1 = GpxHandler("tracks/Hollyburn TCT/Blind_Skier.gpx")
-    println(track1.getTrackName())
-    val track2 = GpxHandler("tracks/Hollyburn TCT/Track_Hollyburn  143605.gpx")
-    println(track2.getTrackName())
+    val track1 = GpxHandler("tracks/Hollyburn TCT/Blind_Skier.gpx").readGpx()
+    println(track1.name)
+    val track2 = GpxHandler("tracks/Hollyburn TCT/Track_Hollyburn  143605.gpx").readGpx()
+    println(track2.name)
 
-    val result = average(track1.getSimplifiedTrack(), track2.getSimplifiedTrack())
-    GpxHandler.createGpx("tracks/result.gpx", result, "Averaged Track")
+    val result =
+        if (track1.getPointCount() < track2.getPointCount())
+            averageWith(track1.getTrack(), track2.getTrack())
+        else
+            averageWith(track2.getTrack(), track1.getTrack())
+    GpxHandler("tracks/result.gpx").writeGpx("Averaged Track", result)
+}
+
+/**
+ * If two points that would be added to the track are within this threshold,
+ * the average of those points is added instead.
+ */
+const val DISTANCE_THRESHOLD = 0.00004496 // Equivalent to about 5 meters when using lat/lon
+/**
+ * If a point is this close to the previous point, it will be combined with the
+ * previous point.
+ */
+const val COMBINATION_THRESHOLD = 0.00001 // Equivalent to about 1 meter
+
+fun averageWith(primary: List<Point2D>, other: List<Point2D>)
+        : List<Point2D> {
+    val track = primary.map { point ->
+        averageNearestPoint(point, other)
+    }
+    val simplified = ArrayList<Point2D>()
+
+    // Figure out the point to add
+    // I've tried about 3 different ways of doing this iteration, and I
+    // couldn't figure out any of them. Please kotlin just give me a normal
+    // for loop sometimes
+    var i = 0
+    while (i < track.size) {
+        var add = track[i++]
+        var count = 1
+        // When points are close together, subsequent points should be
+        // combined into the running average
+        while (i < track.size && track[i].distance(add) < COMBINATION_THRESHOLD)
+            add = pointAverage(add, count++, track[i++], 1)
+        // The averaged point should be added to the simplified list
+        simplified.add(add)
+    }
+
+    return simplified
 }
 
 fun average(list1: List<Point2D>, list2: List<Point2D>)
@@ -18,17 +58,6 @@ fun average(list1: List<Point2D>, list2: List<Point2D>)
 }
 fun average(list1: List<Point2D>, weight1: Int, list2: List<Point2D>, weight2: Int)
         : List<Point2D> {
-    /**
-     * If two points that would be added to the track are within this threshold,
-     * the average of those points is added instead.
-     */
-    val DISTANCE_THRESHOLD = 0.00004496 // Equivalent to about 5 meters when using lat/lon
-    /**
-     * If a point is this close to the previous point, it will be combined with the
-     * previous point.
-     */
-    val COMBINATION_THRESHOLD = 0.00001 // Equivalent to about 1 meter
-
     // Assume each track is complete (endpoints pair with each other),
     // and 'travelling' in the same direction
     // Then each point from each line should find the closest point from the other track,
