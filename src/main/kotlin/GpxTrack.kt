@@ -1,7 +1,7 @@
 import java.awt.geom.Point2D
 
-class GpxTrack(val name: String, track: List<Point2D>) {
-    private val track = track.toMutableList()
+class GpxTrack(var name: String, track: List<Point2D>) {
+    private var track = track.toMutableList()
 
     fun getTrack(): List<Point2D> {
         return track.toList()
@@ -15,8 +15,7 @@ class GpxTrack(val name: String, track: List<Point2D>) {
      * @param threshold How close together should two points be for them to be combined.
      * The default value is equivalent to about 3 meters using lat/lon coordinates
      */
-    fun simplifyTrack(threshold: Double = 0.00003)
-            : GpxTrack {
+    fun simplifyTrack(threshold: Double = 0.00003) {
         val simplified = ArrayList<Point2D>()
 
         // Figure out the point to add
@@ -34,15 +33,13 @@ class GpxTrack(val name: String, track: List<Point2D>) {
             // The averaged point should be added to the simplified list
             simplified.add(add)
         }
-
-        return GpxTrack(name, simplified)
+        track = simplified
     }
 
     /**
      * Smooths a track's points out to make a track less jagged
      */
-    fun smoothTrack()
-            : GpxTrack {
+    fun smoothTrack() {
         // Each point should be averaged with the one before and after it
         val list = track.mapIndexed { i, point ->
             // Leave first and last point untouched
@@ -50,7 +47,7 @@ class GpxTrack(val name: String, track: List<Point2D>) {
             // Average with the midpoint of the bounding points
             else pointAverage(point, pointAverage(track[i - 1], track[i + 1]))
         }
-        return GpxTrack(name, list)
+        track = list.toMutableList()
     }
 
     /**

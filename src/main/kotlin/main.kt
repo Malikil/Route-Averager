@@ -2,25 +2,23 @@ import java.awt.geom.Point2D
 import kotlin.math.abs
 
 fun main() {
-    val track1 = GpxHandler("tracks/Hollyburn TCT/Blind_Skier.gpx").readGpx()
-    println(track1.name)
-    val track2 = GpxHandler("tracks/Hollyburn TCT/Track_Hollyburn  143605.gpx").readGpx()
-    println(track2.name)
+    val folder = "Wendy Thompson"
+    val tracks = arrayOf("eric_out", "mike_out", "mike_return", "eric_return")
+    val gpx = tracks.map { gpxName ->
+        println("Reading gpx: tracks/${folder}/${gpxName}.gpx")
+        val gpx = GpxHandler("tracks/${folder}/${gpxName}.gpx").readGpx()
+        gpx.simplifyTrack()
+        gpx
+    }.toMutableList()
 
-    val simplified = arrayOf(
-        track1.simplifyTrack(COMBINATION_THRESHOLD),
-        track2.simplifyTrack(COMBINATION_THRESHOLD)
-    )
-    val result = GpxTrack("Averaged Track", average(
-        averageWith(simplified[0].getTrack(), simplified[1].getTrack()),
-        averageWith(simplified[1].getTrack(), simplified[0].getTrack())
-    )).smoothTrack()
+    val result = gpx.reduce { acc, gpxTrack ->
+        averageWith(acc, gpxTrack)
+    }
     GpxHandler("tracks/result.gpx").writeGpx(result)
-
-    var superSmooth = result.smoothTrack()
-    for (i in 0..50)
-        superSmooth = superSmooth.smoothTrack()
-    GpxHandler("tracks/result-smooth.gpx").writeGpx(superSmooth)
+    result.smoothTrack()
+    result.simplifyTrack(COMBINATION_THRESHOLD)
+    result.name = "Smooth Result"
+    GpxHandler("tracks/result-smooth.gpx").writeGpx(result)
 }
 
 /**
@@ -33,6 +31,45 @@ const val DISTANCE_THRESHOLD = 0.00004496 // Equivalent to about 5 meters when u
  * previous point.
  */
 const val COMBINATION_THRESHOLD = 0.00001 // Equivalent to about 1 meter
+const val PRIMARY_WEIGHT = 4
+
+fun averageWith(primary: GpxTrack, other: GpxTrack)
+        : GpxTrack {
+    // Run through the length of the primary track. Add averages corresponding to
+    // each track point and midpoint
+    val track = primary.getTrack()
+    val otherTrack = other.getTrack()
+    val averaged = ArrayList<Point2D>()
+
+    // Special case to add the first point
+    averaged.add(averageNearestPoint(track[0], otherTrack, PRIMARY_WEIGHT, 1))
+
+    var i = 1
+    while (i < track.size) {
+        // Add the previous midpoint
+        averaged.add(averageNearestPoint(
+            pointAverage(track[i - 1], track[i]),
+            otherTrack,
+            PRIMARY_WEIGHT,
+            1
+        ))
+        // Add the current point
+        averaged.add(averageNearestPoint(
+            track[i],
+            otherTrack,
+            PRIMARY_WEIGHT,
+            1
+        ))
+        // Increment
+        i++
+    }
+
+    // Create the track and simplify/smooth
+    val result = GpxTrack(primary.name, averaged)
+    //result.smoothTrack()
+    //result.simplifyTrack()
+    return result
+}
 
 fun averageWith(primary: List<Point2D>, other: List<Point2D>)
         : List<Point2D> {
