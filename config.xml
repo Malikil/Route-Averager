@@ -1,0 +1,10 @@
+<config>
+    <base-folder>tracks</base-folder>
+    <track-folder>Creek to Peak</track-folder>
+    <tracks>
+        <gpx>GraphHopper</gpx>
+        <gpx>Creek_to_Peak</gpx>
+        <gpx>Foliage_movement</gpx>
+        <gpx>master-route</gpx>
+    </tracks>
+</config>
