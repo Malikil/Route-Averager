@@ -86,7 +86,7 @@ class GpxHandler(
         )
     }
 
-    fun readGpx(): GpxTrack {
+    fun readGpx(properties: List<String>? = null): GpxTrack {
         // Prepare document
         val xmlFile = File(filename)
 
@@ -122,6 +122,56 @@ class GpxHandler(
             doc, XPathConstants.STRING
         ) as String
 
-        return GpxTrack(name, trackPoints)
+        return GpxTrack(name, trackPoints, properties ?: listOf())
+    }
+
+    fun readMultitrack(properties: List<String>? = null): List<GpxTrack> {
+        // Prepare document
+        val xmlFile = File(filename)
+
+        val dbFactory = DocumentBuilderFactory.newInstance()
+        val dBuilder = dbFactory.newDocumentBuilder()
+        val xmlInput = InputSource(StringReader(xmlFile.readText()))
+
+        val doc = dBuilder.parse(xmlInput)
+
+        // Read track
+        val xpFactory = XPathFactory.newInstance()
+        val xPath = xpFactory.newXPath()
+
+        val xmlTrackList = xPath.evaluate(
+            "/gpx/trk",
+            doc, XPathConstants.NODESET
+        ) as NodeList
+
+        val trackList = ArrayList<GpxTrack>()
+        for (i in 0 until xmlTrackList.length) {
+            val track = xmlTrackList.item(i)
+            // Track name
+            val name = xPath.evaluate(
+                "name",
+                track, XPathConstants.STRING
+            ) as String
+
+            // Get the track itself
+            val xmlTrack = xPath.evaluate(
+                "trkseg/trkpt",
+                track, XPathConstants.NODESET
+            ) as NodeList
+
+            val trackPoints = ArrayList<Point2D>()
+            for (j in 0 until xmlTrack.length) {
+                val attr = xmlTrack.item(j).attributes
+                val lat = attr.getNamedItem("lat")
+                val lon = attr.getNamedItem("lon")
+                trackPoints += Point2D.Double(
+                    lon.nodeValue.toDouble(),
+                    lat.nodeValue.toDouble()
+                )
+            }
+            trackList += GpxTrack(name, trackPoints, properties ?: listOf())
+        }
+
+        return trackList
     }
 }

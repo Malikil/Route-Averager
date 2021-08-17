@@ -2,15 +2,24 @@ import org.w3c.dom.NodeList
 import org.xml.sax.InputSource
 import java.io.File
 import java.io.StringReader
+import java.util.*
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.xpath.XPathConstants
 import javax.xml.xpath.XPathFactory
+import kotlin.collections.ArrayList
 
 class Config private constructor(
     val rootFolder: String,
     val trackFolder: String,
-    val trackList: List<String>
+    val trackList: List<TrackConfig>
 ) {
+    class TrackConfig(
+        val name: String,
+        val properties: List<String>
+    ) {
+
+    }
+
     companion object {
         fun load(): Config { return loadFrom("config.xml") }
         fun loadFrom(path: String): Config {
@@ -38,10 +47,15 @@ class Config private constructor(
                 "/config/tracks/gpx",
                 doc, XPathConstants.NODESET
             ) as NodeList
-            val trackList = ArrayList<String>()
+            val trackList = ArrayList<TrackConfig>()
             for (i in 0 until trackListNodes.length) {
                 val gpx = trackListNodes.item(i)
-                trackList += gpx.textContent
+                val attributes = gpx.attributes.getNamedItem("attr")
+                    ?.nodeValue?.split(' ') ?: ArrayList<String>()
+                trackList += TrackConfig(
+                    gpx.textContent,
+                    attributes
+                )
             }
 
             return Config(root, folder, trackList)
